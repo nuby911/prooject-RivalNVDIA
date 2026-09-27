@@ -138,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Pelan-pelan saja, yang penting terus bergerak.',
+              'ngoding boleh gila jangan.',
               style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 14),
             ),
             const SizedBox(height: 24),
