@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'add_task_screen.dart';
 import 'detail_task_screen.dart';
+import '../models/task.dart';
+import '../services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,21 +15,41 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<_TaskItem> _tasks = [
-    _TaskItem(
-      title: 'Baca materi Flutter',
-      dueAt: DateTime.now().copyWith(hour: 9, minute: 0),
-      isCompleted: true,
-    ),
-    _TaskItem(
-      title: 'Selesaikan tugas kelompok',
-      dueAt: DateTime.now().copyWith(hour: 11, minute: 30),
-    ),
-    _TaskItem(
-      title: 'Olahraga ringan',
-      dueAt: DateTime.now().copyWith(hour: 16, minute: 0),
-    ),
-  ];
+  final StorageService _storageService = StorageService();
+  final List<Task> _tasks = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadTasks());
+  }
+
+  Future<void> _loadTasks() async {
+    try {
+      final tasks = await _storageService.loadTasks();
+      if (!mounted) return;
+      setState(() => _tasks.addAll(tasks));
+    } catch (_) {
+      if (mounted) _showStorageError();
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _persistTasks() async {
+    try {
+      await _storageService.saveTasks(List<Task>.of(_tasks));
+    } catch (_) {
+      if (mounted) _showStorageError();
+    }
+  }
+
+  void _showStorageError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Perubahan tugas gagal disimpan.')),
+    );
+  }
 
   int get _completedCount => _tasks.where((task) => task.isCompleted).length;
 
@@ -36,18 +60,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted || draft == null) return;
 
-    setState(() {
-      _tasks.add(
-        _TaskItem(
+    setState(
+      () => _tasks.add(
+        Task.fromDraft(
           title: draft.title,
           description: draft.description,
           dueAt: draft.dueAt,
         ),
-      );
-    });
+      ),
+    );
+    await _persistTasks();
   }
 
-  Future<void> _openTask(_TaskItem task) async {
+  Future<void> _openTask(Task task) async {
     final completed = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (_) => DetailTaskScreen(
@@ -61,6 +86,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted || completed == null) return;
     setState(() => task.isCompleted = completed);
+    await _persistTasks();
+  }
+
+  Future<void> _setTaskCompleted(Task task, bool? completed) async {
+    setState(() => task.isCompleted = completed ?? false);
+    await _persistTasks();
+  }
+
+  Future<void> _deleteTask(Task task) async {
+    setState(() => _tasks.remove(task));
+    await _persistTasks();
   }
 
   String _formatTime(DateTime? dateTime) {
@@ -111,229 +147,236 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: Colors.transparent,
       ),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 112),
-          children: [
-            Text(
-              _todayLabel.toUpperCase(),
-              style: TextStyle(
-                color: Color(0xFF668078),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Fokus hari ini',
-              style: TextStyle(
-                color: Color(0xFF172E29),
-                fontSize: 30,
-                height: 1.15,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.7,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'ngoding boleh gila jangan.',
-              style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF173D34), Color(0xFF286653)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(26),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+              top: false,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 112),
                 children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Target hari ini',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '$_completedCount/${_tasks.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 9,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFFD9F5B8),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   Text(
-                    _tasks.isEmpty
-                        ? 'Tambahkan tugas pertamamu hari ini.'
-                        : 'Tugas selesai dari total rencana',
+                    _todayLabel.toUpperCase(),
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.82),
-                      fontSize: 13,
+                      color: Color(0xFF668078),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryTile(
-                    icon: Icons.checklist_rounded,
-                    label: 'TOTAL AGENDA',
-                    value: '${_tasks.length}',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _SummaryTile(
-                    icon: Icons.done_all_rounded,
-                    label: 'TERSELESAIKAN',
-                    value: '$_completedCount',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Agenda hari ini',
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Fokus hari ini',
                     style: TextStyle(
                       color: Color(0xFF172E29),
-                      fontSize: 20,
+                      fontSize: 30,
+                      height: 1.15,
                       fontWeight: FontWeight.w800,
+                      letterSpacing: -0.7,
                     ),
                   ),
-                ),
-                Text(
-                  '${_tasks.length} agenda',
-                  style: TextStyle(
-                    color: const Color(0xFF4F796C),
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 8),
+                  Text(
+                    'ngoding boleh gila jangan, oke?',
+                    style: TextStyle(
+                      color: Colors.blueGrey.shade600,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_tasks.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.event_note_rounded,
-                      size: 38,
-                      color: Colors.indigo.shade300,
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF173D34), Color(0xFF286653)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(26),
                     ),
-                    const SizedBox(height: 8),
-                    const Text('Belum ada tugas. Yuk, tambahkan satu!'),
-                  ],
-                ),
-              )
-            else
-              ..._tasks.map(
-                (task) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    color: Colors.white,
-                    elevation: 1,
-                    shadowColor: const Color(0xFF173D34)
-                        .withValues(alpha: 0.06),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
-                      ),
-                      leading: Checkbox(
-                        value: task.isCompleted,
-                        onChanged: (value) =>
-                            setState(() => task.isCompleted = value ?? false),
-                        shape: const CircleBorder(),
-                        activeColor: const Color(0xFF286653),
-                      ),
-                      title: Text(
-                        task.title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          decoration: task.isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: task.isCompleted ? Colors.grey : null,
-                        ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            const Icon(
-                              Icons.schedule_rounded,
-                              size: 14,
-                              color: Color(0xFF789088),
+                            const Expanded(
+                              child: Text(
+                                'Target hari ini',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                            const SizedBox(width: 5),
                             Text(
-                              _formatTime(task.dueAt),
+                              '$_completedCount/${_tasks.length}',
                               style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF789088),
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      onTap: () => _openTask(task),
-                      trailing: IconButton(
-                        tooltip: 'Hapus ${task.title}',
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        color: Colors.blueGrey.shade300,
-                        onPressed: () => setState(() => _tasks.remove(task)),
-                      ),
+                        const SizedBox(height: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 9,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.2,
+                            ),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFD9F5B8),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _tasks.isEmpty
+                              ? 'Tambahkan tugas pertamamu hari ini.'
+                              : 'Tugas selesai dari total rencana',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.82),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SummaryTile(
+                          icon: Icons.checklist_rounded,
+                          label: 'TOTAL AGENDA',
+                          value: '${_tasks.length}',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _SummaryTile(
+                          icon: Icons.done_all_rounded,
+                          label: 'TERSELESAIKAN',
+                          value: '$_completedCount',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Agenda hari ini',
+                          style: TextStyle(
+                            color: Color(0xFF172E29),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${_tasks.length} agenda',
+                        style: TextStyle(
+                          color: const Color(0xFF4F796C),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (_tasks.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.event_note_rounded,
+                            size: 38,
+                            color: Colors.indigo.shade300,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text('Belum ada tugas. Yuk, tambahkan satu!'),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._tasks.map(
+                      (task) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          color: Colors.white,
+                          elevation: 1,
+                          shadowColor: const Color(0xFF173D34)
+                              .withValues(alpha: 0.06),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            leading: Checkbox(
+                              value: task.isCompleted,
+                              onChanged: (value) =>
+                                  _setTaskCompleted(task, value),
+                              shape: const CircleBorder(),
+                              activeColor: const Color(0xFF286653),
+                            ),
+                            title: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                decoration: task.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                color: task.isCompleted ? Colors.grey : null,
+                              ),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.schedule_rounded,
+                                    size: 14,
+                                    color: Color(0xFF789088),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    _formatTime(task.dueAt),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF789088),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            onTap: () => _openTask(task),
+                            trailing: IconButton(
+                              tooltip: 'Hapus ${task.title}',
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              color: Colors.blueGrey.shade300,
+                              onPressed: () => _deleteTask(task),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-          ],
-        ),
-      ),
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addTask,
         backgroundColor: const Color(0xFFD9F5B8),
@@ -346,20 +389,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
-
-class _TaskItem {
-  _TaskItem({
-    required this.title,
-    this.description = '',
-    this.dueAt,
-    this.isCompleted = false,
-  });
-
-  final String title;
-  final String description;
-  final DateTime? dueAt;
-  bool isCompleted;
 }
 
 class _SummaryTile extends StatelessWidget {
