@@ -26,7 +26,7 @@ class NotificationService {
 			iOS: DarwinInitializationSettings(),
 		);
 
-		await _plugin.initialize(initializationSettings);
+		await _plugin.initialize(settings: initializationSettings);
 		_initialized = true;
 	}
 
@@ -58,11 +58,11 @@ class NotificationService {
 		}
 
 		await _plugin.zonedSchedule(
-			task.notificationId,
-			'Pengingat tugas',
-			task.title,
-			timezone.TZDateTime.from(reminderAt, timezone.local),
-			const NotificationDetails(
+			id: task.notificationId,
+			title: 'Pengingat tugas',
+			body: task.title,
+			scheduledDate: timezone.TZDateTime.from(reminderAt, timezone.local),
+			notificationDetails: const NotificationDetails(
 				android: AndroidNotificationDetails(
 					'task_reminders',
 					'Pengingat tugas',
@@ -78,7 +78,7 @@ class NotificationService {
 
 	Future<void> cancelReminder(Task task) async {
 		await initialize();
-		await _plugin.cancel(task.notificationId);
+		await _plugin.cancel(id: task.notificationId);
 	}
 
 	Future<void> cancelAllReminders() async {
