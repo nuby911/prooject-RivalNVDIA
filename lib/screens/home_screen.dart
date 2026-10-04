@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'add_task_screen.dart';
 import 'detail_task_screen.dart';
 import '../models/task.dart';
+import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -27,9 +28,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadTasks() async {
     try {
-      final tasks = await _storageService.loadTasks();
+      final storedTasks = await _storageService.loadTasks();
+      final tasks = storedTasks.map((task) {
+        if (task.reminderAt != null || task.dueAt == null) return task;
+        return task.copyWith(reminderAt: _defaultReminderAt(task.dueAt));
+      }).toList();
       if (!mounted) return;
       setState(() => _tasks.addAll(tasks));
+
+      if (storedTasks.any(
+        (task) => task.reminderAt == null && task.dueAt != null,
+      )) {
+        await _storageService.saveTasks(tasks);
+      }
+
+      final remindersToSchedule = tasks
+          .where(
+            (task) =>
+                !task.isCompleted &&
+                task.reminderAt?.isAfter(DateTime.now()) == true,
+          )
+          .toList();
+      if (remindersToSchedule.isNotEmpty) {
+        try {
+          for (final task in remindersToSchedule) {
+            await NotificationService.instance.scheduleReminder(task);
+          }
+        } catch (_) {
+          if (mounted) _showNotificationError();
+        }
+      }
     } catch (_) {
       if (mounted) _showStorageError();
     } finally {
@@ -51,6 +79,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showNotificationError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Pengingat gagal dijadwalkan. Periksa izin notifikasi.'),
+      ),
+    );
+  }
+
+  DateTime? _defaultReminderAt(DateTime? dueAt) {
+    if (dueAt == null || !dueAt.isAfter(DateTime.now())) return null;
+
+    final tenMinutesBefore = dueAt.subtract(const Duration(minutes: 10));
+    return tenMinutesBefore.isAfter(DateTime.now()) ? tenMinutesBefore : dueAt;
+  }
+
+  Future<void> _syncReminder(Task task) async {
+    try {
+      if (task.isCompleted) {
+        await NotificationService.instance.cancelReminder(task);
+      } else {
+        await NotificationService.instance.scheduleReminder(task);
+      }
+    } catch (_) {
+      if (mounted) _showNotificationError();
+    }
+  }
+
   int get _completedCount => _tasks.where((task) => task.isCompleted).length;
 
   Future<void> _addTask() async {
@@ -60,16 +115,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted || draft == null) return;
 
-    setState(
-      () => _tasks.add(
-        Task.fromDraft(
-          title: draft.title,
-          description: draft.description,
-          dueAt: draft.dueAt,
-        ),
-      ),
+    final task = Task.fromDraft(
+      title: draft.title,
+      description: draft.description,
+      dueAt: draft.dueAt,
+      reminderAt: _defaultReminderAt(draft.dueAt),
     );
+    setState(() => _tasks.add(task));
     await _persistTasks();
+
+    if (task.reminderAt != null) {
+      try {
+        final notificationsAllowed = await NotificationService.instance
+            .requestPermissions();
+        final exactAlarmsAllowed = await NotificationService.instance
+            .requestExactAlarmPermission();
+        await NotificationService.instance.scheduleReminder(task);
+        if (!mounted) return;
+        if (!notificationsAllowed) {
+          _showNotificationError();
+        } else if (!exactAlarmsAllowed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Izin alarm presisi belum aktif. Pengingat tetap dijadwalkan, '
+                'tetapi bisa terlambat.',
+              ),
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) _showNotificationError();
+      }
+    }
   }
 
   Future<void> _openTask(Task task) async {
@@ -87,16 +165,23 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || completed == null) return;
     setState(() => task.isCompleted = completed);
     await _persistTasks();
+    await _syncReminder(task);
   }
 
   Future<void> _setTaskCompleted(Task task, bool? completed) async {
     setState(() => task.isCompleted = completed ?? false);
     await _persistTasks();
+    await _syncReminder(task);
   }
 
   Future<void> _deleteTask(Task task) async {
     setState(() => _tasks.remove(task));
     await _persistTasks();
+    try {
+      await NotificationService.instance.cancelReminder(task);
+    } catch (_) {
+      if (mounted) _showNotificationError();
+    }
   }
 
   String _formatTime(DateTime? dateTime) {
