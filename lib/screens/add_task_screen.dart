@@ -116,6 +116,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               'Catat hal yang ingin kamu selesaikan hari ini.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Jika tenggat diatur, pengingat muncul 10 menit sebelumnya. '
+              'Jika tenggat kurang dari 10 menit lagi, pengingat muncul saat tenggat.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
             const SizedBox(height: 28),
             TextFormField(
               controller: _titleController,
