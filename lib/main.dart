@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'services/notification_service.dart';
+import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -12,16 +16,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Rencana Hri Ini',
+      title: 'Rencana Harian',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5B67CA),
-          surface: const Color(0xFFF7F7FC),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF7F7FC),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       home: const HomeScreen(),
     );
   }
