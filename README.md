@@ -18,8 +18,11 @@
 ## Pratinjau Antarmuka
 
 <div align="center">
-	<img src="./lib/scren/1.png" width="280" alt="Layar utama Rencana Hari Ini" />
-	<img src="./lib/scren/2.png" width="280" alt="Layar tambah tugas" />
+	<img src="./lib/scren/1.png" width="260" alt="Layar utama Rencana Hari Ini" />
+	&nbsp;&nbsp;
+	<img src="./lib/scren/2.png" width="260" alt="Layar tambah dan edit tugas" />
+	&nbsp;&nbsp;
+	<img src="./lib/scren/3.png" width="260" alt="Layar detail rincian tugas" />
 </div>
 
 ---
