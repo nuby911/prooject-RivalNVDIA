@@ -2,11 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'add_task_screen.dart';
-import 'detail_task_screen.dart';
 import '../models/task.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/empty_task.dart';
+import 'add_task_screen.dart';
+import 'detail_task_screen.dart';
+
+enum TaskFilter { all, pending, completed }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,10 +24,21 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Task> _tasks = [];
   bool _isLoading = true;
 
+  // Filter & Search
+  TaskFilter _selectedFilter = TaskFilter.all;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     unawaited(_loadTasks());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTasks() async {
@@ -33,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (task.reminderAt != null || task.dueAt == null) return task;
         return task.copyWith(reminderAt: _defaultReminderAt(task.dueAt));
       }).toList();
+
       if (!mounted) return;
       setState(() => _tasks.addAll(tasks));
 
@@ -49,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 task.reminderAt?.isAfter(DateTime.now()) == true,
           )
           .toList();
+
       if (remindersToSchedule.isNotEmpty) {
         try {
           for (final task in remindersToSchedule) {
@@ -107,6 +124,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int get _completedCount => _tasks.where((task) => task.isCompleted).length;
+  int get _pendingCount => _tasks.where((task) => !task.isCompleted).length;
+
+  List<Task> get _filteredTasks {
+    var result = _tasks.where((task) {
+      if (_selectedFilter == TaskFilter.pending && task.isCompleted) return false;
+      if (_selectedFilter == TaskFilter.completed && !task.isCompleted) return false;
+
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final matchTitle = task.title.toLowerCase().contains(query);
+        final matchDesc = task.description.toLowerCase().contains(query);
+        if (!matchTitle && !matchDesc) return false;
+      }
+
+      return true;
+    }).toList();
+
+    result.sort((a, b) {
+      if (a.isCompleted != b.isCompleted) {
+        return a.isCompleted ? 1 : -1;
+      }
+      if (a.dueAt != null && b.dueAt != null) {
+        return a.dueAt!.compareTo(b.dueAt!);
+      }
+      if (a.dueAt != null) return -1;
+      if (b.dueAt != null) return 1;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return result;
+  }
 
   Future<void> _addTask() async {
     final draft = await Navigator.of(context).push<TaskDraft>(
@@ -121,15 +169,16 @@ class _HomeScreenState extends State<HomeScreen> {
       dueAt: draft.dueAt,
       reminderAt: _defaultReminderAt(draft.dueAt),
     );
+
     setState(() => _tasks.add(task));
     await _persistTasks();
 
     if (task.reminderAt != null) {
       try {
-        final notificationsAllowed = await NotificationService.instance
-            .requestPermissions();
-        final exactAlarmsAllowed = await NotificationService.instance
-            .requestExactAlarmPermission();
+        final notificationsAllowed =
+            await NotificationService.instance.requestPermissions();
+        final exactAlarmsAllowed =
+            await NotificationService.instance.requestExactAlarmPermission();
         await NotificationService.instance.scheduleReminder(task);
         if (!mounted) return;
         if (!notificationsAllowed) {
@@ -151,21 +200,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openTask(Task task) async {
-    final completed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => DetailTaskScreen(
-          title: task.title,
-          description: task.description,
-          dueAt: task.dueAt,
-          isCompleted: task.isCompleted,
-        ),
+    final result = await Navigator.of(context).push<DetailResult>(
+      MaterialPageRoute<DetailResult>(
+        builder: (_) => DetailTaskScreen(task: task),
       ),
     );
 
-    if (!mounted || completed == null) return;
-    setState(() => task.isCompleted = completed);
-    await _persistTasks();
-    await _syncReminder(task);
+    if (!mounted || result == null) return;
+
+    if (result.action == DetailActionResult.deleted) {
+      await _deleteTask(task, showUndo: true);
+    } else if (result.action == DetailActionResult.updated && result.task != null) {
+      final index = _tasks.indexWhere((t) => t.id == task.id);
+      if (index != -1) {
+        setState(() => _tasks[index] = result.task!);
+        await _persistTasks();
+        await _syncReminder(result.task!);
+      }
+    }
   }
 
   Future<void> _setTaskCompleted(Task task, bool? completed) async {
@@ -174,46 +226,80 @@ class _HomeScreenState extends State<HomeScreen> {
     await _syncReminder(task);
   }
 
-  Future<void> _deleteTask(Task task) async {
+  Future<void> _deleteTask(Task task, {bool showUndo = true}) async {
+    final index = _tasks.indexOf(task);
     setState(() => _tasks.remove(task));
     await _persistTasks();
-    try {
-      await NotificationService.instance.cancelReminder(task);
-    } catch (_) {
-      if (mounted) _showNotificationError();
+
+    if (task.reminderAt != null) {
+      try {
+        await NotificationService.instance.cancelReminder(task);
+      } catch (_) {
+        if (mounted) _showNotificationError();
+      }
+    }
+
+    if (showUndo && mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tugas "${task.title}" dihapus.'),
+          action: SnackBarAction(
+            label: 'URUNGKAN',
+            onPressed: () => _restoreTask(task, index),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
+  Future<void> _restoreTask(Task task, int originalIndex) async {
+    setState(() {
+      if (originalIndex >= 0 && originalIndex <= _tasks.length) {
+        _tasks.insert(originalIndex, task);
+      } else {
+        _tasks.add(task);
+      }
+    });
+    await _persistTasks();
+    await _syncReminder(task);
+  }
+
   String _formatTime(DateTime? dateTime) {
-    if (dateTime == null) return 'Waktu belum ditentukan';
+    if (dateTime == null) return 'Tanpa tenggat';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final diffDays = targetDate.difference(today).inDays;
+
     final hour = dateTime.hour.toString().padLeft(2, '0');
     final minute = dateTime.minute.toString().padLeft(2, '0');
-    return 'Hari ini · $hour:$minute';
+    final timeStr = '$hour:$minute';
+
+    if (diffDays == 0) {
+      return 'Hari ini · $timeStr';
+    } else if (diffDays == 1) {
+      return 'Besok · $timeStr';
+    } else if (diffDays == -1) {
+      return 'Kemarin · $timeStr';
+    } else {
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+      ];
+      return '${dateTime.day} ${months[dateTime.month - 1]} · $timeStr';
+    }
   }
 
   String get _todayLabel {
     const weekdays = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
+      'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
     ];
     const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
     final now = DateTime.now();
     return '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}';
@@ -222,61 +308,70 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final progress = _tasks.isEmpty ? 0.0 : _completedCount / _tasks.length;
+    final filteredTasks = _filteredTasks;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F3),
       appBar: AppBar(
         title: const Text(
-          'Rencana harian',
+          'Rencana Hari Ini',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: Colors.transparent,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               top: false,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 112),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 112),
                 children: [
                   Text(
                     _todayLabel.toUpperCase(),
                     style: TextStyle(
-                      color: Color(0xFF668078),
+                      color: isDark ? const Color(0xFFA5ADFF) : AppTheme.primaryColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.1,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Fokus hari ini',
-                    style: TextStyle(
-                      color: Color(0xFF172E29),
-                      fontSize: 30,
-                      height: 1.15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.7,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
-                    'ngoding boleh gila jangan, oke?',
+                    'Satu langkah kecil,\nlebih dekat ke tujuan.',
                     style: TextStyle(
-                      color: Colors.blueGrey.shade600,
-                      fontSize: 14,
+                      color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                      fontSize: 27,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Atur kegiatanmu dan nikmati progresnya.',
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+
+                  // Card Progress (Gradient Asli: Indigo 0xFF6874D8 -> 0xFF515DBE)
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF173D34), Color(0xFF286653)],
+                        colors: [AppTheme.gradientStart, AppTheme.gradientEnd],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(26),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,10 +380,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             const Expanded(
                               child: Text(
-                                'Target hari ini',
+                                'Progres hari ini',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: 17,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -297,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               '$_completedCount/${_tasks.length}',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 24,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -309,11 +404,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: LinearProgressIndicator(
                             value: progress,
                             minHeight: 9,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.2,
-                            ),
+                            backgroundColor: Colors.white.withValues(alpha: 0.25),
                             valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFFD9F5B8),
+                              Colors.white,
                             ),
                           ),
                         ),
@@ -321,9 +414,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           _tasks.isEmpty
                               ? 'Tambahkan tugas pertamamu hari ini.'
-                              : 'Tugas selesai dari total rencana',
+                              : '${(progress * 100).toInt()}% rencana telah terselesaikan',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.82),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 13,
                           ),
                         ),
@@ -331,6 +424,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
+
+                  // Summary Tiles
                   Row(
                     children: [
                       Expanded(
@@ -340,7 +435,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           value: '${_tasks.length}',
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _SummaryTile(
+                          icon: Icons.pending_actions_rounded,
+                          label: 'BELUM SELESAI',
+                          value: '$_pendingCount',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: _SummaryTile(
                           icon: Icons.done_all_rounded,
@@ -350,110 +453,193 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 22),
+
+                  // Search Bar
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                    decoration: InputDecoration(
+                      hintText: 'Cari tugas atau catatan...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        FilterChip(
+                          label: Text('Semua (${_tasks.length})'),
+                          selected: _selectedFilter == TaskFilter.all,
+                          onSelected: (_) =>
+                              setState(() => _selectedFilter = TaskFilter.all),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: Text('Belum Selesai ($_pendingCount)'),
+                          selected: _selectedFilter == TaskFilter.pending,
+                          onSelected: (_) =>
+                              setState(() => _selectedFilter = TaskFilter.pending),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: Text('Selesai ($_completedCount)'),
+                          selected: _selectedFilter == TaskFilter.completed,
+                          onSelected: (_) =>
+                              setState(() => _selectedFilter = TaskFilter.completed),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Section Title
                   Row(
                     children: [
                       const Expanded(
                         child: Text(
-                          'Agenda hari ini',
+                          'Daftar tugas',
                           style: TextStyle(
-                            color: Color(0xFF172E29),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                       Text(
-                        '${_tasks.length} agenda',
+                        '${filteredTasks.length} tugas',
                         style: TextStyle(
-                          color: const Color(0xFF4F796C),
-                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFA5ADFF) : AppTheme.primaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  if (_tasks.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.event_note_rounded,
-                            size: 38,
-                            color: Colors.indigo.shade300,
-                          ),
-                          const SizedBox(height: 8),
-                          const Text('Belum ada tugas. Yuk, tambahkan satu!'),
-                        ],
-                      ),
+
+                  // Task List or Empty State
+                  if (filteredTasks.isEmpty)
+                    EmptyTask(
+                      title: _searchQuery.isNotEmpty
+                          ? 'Tidak ada hasil pencarian'
+                          : (_selectedFilter == TaskFilter.completed
+                              ? 'Belum ada tugas selesai'
+                              : 'Belum ada agenda'),
+                      message: _searchQuery.isNotEmpty
+                          ? 'Coba gunakan kata kunci pencarian yang lain.'
+                          : (_selectedFilter == TaskFilter.completed
+                              ? 'Selesaikan tugas pertamamu hari ini!'
+                              : 'Yuk, tambahkan tugas barumu!'),
+                      onAddTask: _searchQuery.isEmpty && _selectedFilter != TaskFilter.completed
+                          ? _addTask
+                          : null,
                     )
                   else
-                    ..._tasks.map(
+                    ...filteredTasks.map(
                       (task) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: Card(
-                          margin: EdgeInsets.zero,
-                          color: Colors.white,
-                          elevation: 1,
-                          shadowColor: const Color(0xFF173D34)
-                              .withValues(alpha: 0.06),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                        child: Dismissible(
+                          key: Key(task.id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade400,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: const Icon(Icons.delete_rounded, color: Colors.white),
                           ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 5,
-                            ),
-                            leading: Checkbox(
-                              value: task.isCompleted,
-                              onChanged: (value) =>
-                                  _setTaskCompleted(task, value),
-                              shape: const CircleBorder(),
-                              activeColor: const Color(0xFF286653),
-                            ),
-                            title: Text(
-                              task.title,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                                decoration: task.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: task.isCompleted ? Colors.grey : null,
+                          onDismissed: (_) => _deleteTask(task, showUndo: true),
+                          child: Card(
+                            margin: EdgeInsets.zero,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
                               ),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.schedule_rounded,
-                                    size: 14,
-                                    color: Color(0xFF789088),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    _formatTime(task.dueAt),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF789088),
+                              leading: Checkbox(
+                                value: task.isCompleted,
+                                onChanged: (value) =>
+                                    _setTaskCompleted(task, value),
+                                activeColor: AppTheme.primaryColor,
+                              ),
+                              title: Text(
+                                task.title,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  decoration: task.isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: task.isCompleted ? Colors.grey : null,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (task.description.trim().isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: 4),
+                                        child: Text(
+                                          task.description,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.schedule_rounded,
+                                          size: 14,
+                                          color: task.isOverdue
+                                              ? Colors.red.shade400
+                                              : (isDark ? Colors.grey.shade400 : AppTheme.primaryColor),
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          _formatTime(task.dueAt),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: task.isOverdue
+                                                ? FontWeight.w700
+                                                : FontWeight.normal,
+                                            color: task.isOverdue
+                                                ? Colors.red.shade400
+                                                : (isDark ? Colors.grey.shade400 : Colors.grey.shade700),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            onTap: () => _openTask(task),
-                            trailing: IconButton(
-                              tooltip: 'Hapus ${task.title}',
-                              icon: const Icon(Icons.close_rounded, size: 20),
-                              color: Colors.blueGrey.shade300,
-                              onPressed: () => _deleteTask(task),
+                              onTap: () => _openTask(task),
+                              trailing: IconButton(
+                                tooltip: 'Hapus ${task.title}',
+                                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                                color: Colors.grey.shade500,
+                                onPressed: () => _deleteTask(task, showUndo: true),
+                              ),
                             ),
                           ),
                         ),
@@ -464,8 +650,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addTask,
-        backgroundColor: const Color(0xFFD9F5B8),
-        foregroundColor: const Color(0xFF173D34),
         icon: const Icon(Icons.add_rounded),
         label: const Text(
           'Tambah tugas',
@@ -489,41 +673,39 @@ class _SummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 19, color: const Color(0xFF4F796C)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Color(0xFF172E29),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppTheme.primaryColor),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF789088),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,95 +1,181 @@
 <div align="center">
 
-# Rencana Harian
+# Rencana Hari Ini
 
-### Aplikasi Flutter untuk merencanakan tugas dan mengingatkan tenggat.
+### Aplikasi Manajemen Tugas & Pengingat Tenggat Berbasis Flutter
 
-![Flutter](https://img.shields.io/badge/Flutter-Mobile%20App-02569B?logo=flutter)
-![Dart](https://img.shields.io/badge/Dart-3.13.3%2B-0175C2?logo=dart)
+![Flutter](https://img.shields.io/badge/Flutter-v3.13%2B-02569B?logo=flutter)
+![Dart](https://img.shields.io/badge/Dart-v3.13%2B-0175C2?logo=dart)
+![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Android%20%7C%20Windows-green)
+![Tests](https://img.shields.io/badge/Tests-8%2F8%20Passed-brightgreen)
 
 </div>
 
-Rencana Harian membantu mencatat agenda, mengatur tanggal dan waktu tenggat,
-memantau progres penyelesaian, serta menerima pengingat langsung di perangkat.
+**Rencana Hari Ini** adalah aplikasi produktivitas yang dirancang untuk membantu mencatat agenda harian, mengatur tanggal dan jam tenggat waktu, memantau progres tugas, serta menjadwalkan notifikasi pengingat otomatis di perangkat.
 
-## Pratinjau
+---
+
+## Pratinjau Antarmuka
 
 <div align="center">
-	<img src="./lib/scren/1.png" width="280" alt="Layar utama Rencana Harian" />
+	<img src="./lib/scren/1.png" width="280" alt="Layar utama Rencana Hari Ini" />
 	<img src="./lib/scren/2.png" width="280" alt="Layar tambah tugas" />
 </div>
 
-## Fitur
+---
 
-- Tambah tugas dengan tanggal dan waktu tenggat opsional.
-- Lihat jumlah agenda, tugas yang selesai, dan progres harian.
-- Tandai tugas selesai atau belum selesai, buka detail, dan hapus tugas.
-- Simpan daftar tugas secara lokal di perangkat menggunakan `shared_preferences`.
-- Jadwalkan notifikasi lokal untuk tugas yang memiliki tenggat. Pengingat dijadwalkan
-	10 menit sebelum tenggat; jika tenggat kurang dari 10 menit lagi, pengingat
-	dijadwalkan pada waktu tenggat.
-- Sesuaikan jadwal pengingat dengan zona waktu perangkat.
+## Fitur Utama
 
-> Pengingat memerlukan izin notifikasi. Di Android, izin alarm presisi juga dapat
-> diminta; jika tidak diberikan, pengingat mungkin terlambat.
+- **Pencatatan Tugas Lengkap**: Tambah tugas dengan nama tugas, catatan/keterangan rincian, dan jadwal tenggat waktu opsional.
+- **Edit & Perbarui Tugas**: Ubah judul, deskripsi, maupun jadwal tugas yang sudah tersimpan melalui layar detail.
+- **Pencarian Cepat (*Search Bar*)**: Cari tugas secara instan berdasarkan judul atau isi catatan.
+- **Filter Status Agenda**: Saring tugas berdasarkan kategori: *Semua*, *Belum Selesai*, atau *Selesai*.
+- **Pemantauan Progres Harian**: Kartu progres dengan persentase otomatis dan kartu ringkasan jumlah agenda.
+- **Format Waktu Pintar (*Smart Time*)**: Tampilan waktu yang menyesuaikan konteks (*Hari ini*, *Besok*, *Kemarin*, atau tanggal spesifik).
+- **Penghapusan Aman & *Undo***: Konfirmasi saat menghapus tugas serta tombol **"URUNGKAN"** (*Undo*) jika tugas terhapus secara tidak sengaja.
+- **Penyimpanan Lokal (*Offline Persistence*)**: Seluruh data tersimpan otomatis di perangkat menggunakan `shared_preferences`.
+- **Pengingat Notifikasi Lokal**: Pengingat otomatis terjadwal 10 menit sebelum tenggat waktu tiba.
+- **Dukungan Dark Mode & Light Mode**: Desain antarmuka fleksibel yang nyaman di mata baik siang maupun malam hari.
 
-## Teknologi
+---
 
-| Teknologi | Kegunaan |
+## Teknologi yang Digunakan
+
+| Komponen | Kegunaan |
 | --- | --- |
-| Flutter dan Dart | Antarmuka dan logika aplikasi |
-| `shared_preferences` | Penyimpanan tugas lokal |
-| `flutter_local_notifications` | Penjadwalan pengingat lokal |
-| `timezone` dan `flutter_timezone` | Penjadwalan sesuai zona waktu perangkat |
+| **Flutter & Dart** | Framework UI & logika aplikasi multi-platform |
+| **`shared_preferences`** | Penyimpanan data tugas secara lokal di perangkat |
+| **`flutter_local_notifications`** | Pengiriman dan penjadwalan notifikasi alarm lokal |
+| **`timezone` & `flutter_timezone`** | Sinkronisasi zona waktu lokal perangkat untuk alarm presisi |
 
-## Menjalankan aplikasi
+---
 
-### Prasyarat
+## Panduan Instalasi & Menjalankan Aplikasi
 
-- Flutter SDK yang menyertakan Dart SDK `3.13.3` atau lebih baru dalam rentang kompatibel proyek.
-- Android Studio atau perangkat Android untuk menjalankan aplikasi.
-- Untuk menjalankan di iOS, diperlukan macOS dan Xcode.
+Berikut adalah langkah-langkah lengkap untuk menyiapkan lingkungan pengembangan dari awal hingga aplikasi siap dijalankan.
 
-Pastikan Flutter siap digunakan:
+### 1. Prasyarat Sistem
+
+1. **Git**: Pastikan Git sudah terinstal di komputer ([Download Git](https://git-scm.com/)).
+2. **Flutter SDK**: Diperlukan Flutter SDK versi 3.13 atau lebih baru.
+   - Jika belum memiliki Flutter SDK di Windows, Anda bisa meng-clone SDK resmi langsung ke direktori pilihan (misal `D:\flutter`):
+     ```powershell
+     git clone https://github.com/flutter/flutter.git -b stable D:\flutter
+     ```
+   - Tambahkan folder `bin` Flutter (contoh: `D:\flutter\bin`) ke **Environment Variables** (`PATH`) pengguna.
+   - Buka terminal baru dan jalankan diagnosa:
+     ```bash
+     flutter doctor
+     ```
+3. **Target Perangkat**:
+   - **Untuk Web**: Cukup gunakan browser **Google Chrome** atau **Microsoft Edge** (paling mudah & cepat).
+   - **Untuk Android**: Pasang **Android Studio** dan buat Emulator Android, atau hubungkan HP fisik dengan mode *USB Debugging* aktif.
+
+---
+
+### 2. Mengambil Proyek dari GitHub
+
+Clone repositori ini ke komputer Anda:
 
 ```bash
-flutter doctor
+git clone https://github.com/nuby911/prooject-RivalNVDIA.git
+cd prooject-RivalNVDIA
 ```
 
-Dari direktori proyek, ambil dependensi lalu jalankan aplikasi pada emulator atau
-perangkat yang terhubung:
+---
+
+### 3. Mengunduh Dependensi Proyek
+
+Jalankan perintah berikut untuk mengunduh seluruh library yang dibutuhkan:
 
 ```bash
 flutter pub get
-flutter run
 ```
 
-## Pengujian
+---
 
-Jalankan seluruh pengujian Flutter dari direktori proyek:
+### 4. Menjalankan Aplikasi
 
+Pilih salah satu platform target yang ingin digunakan:
+
+#### A. Menjalankan di Browser (Web Chrome)
 ```bash
-flutter test
+flutter run -d chrome
+```
+*Atau dengan port tertentu:*
+```bash
+flutter run -d chrome --web-port 8080
 ```
 
-## Build Android
+#### B. Menjalankan di Perangkat Android / Emulator
+```bash
+flutter run -d android
+```
 
-Untuk membuat APK release:
+#### C. Menjalankan di Desktop Windows
+*(Pastikan opsi Developer Mode sudah diaktifkan di Windows Settings)*
+```bash
+flutter run -d windows
+```
+
+> **Tips Interaktif saat Aplikasi Berjalan:**
+> - Tekan tombol **`r`** di terminal untuk melakukan **Hot Reload** (memperbarui UI seketika).
+> - Tekan tombol **`R`** untuk **Hot Restart** (restart aplikasi dari awal).
+> - Tekan tombol **`q`** untuk berhenti menjalankan aplikasi.
+
+---
+
+## Pengujian & Verifikasi Kualitas Kode
+
+Aplikasi ini dilengkapi pengujian otomatis (*Unit & Widget Testing*) untuk menjamin keandalan fitur.
+
+1. **Menjalankan Seluruh Pengujian:**
+   ```bash
+   flutter test
+   ```
+   *Mencakup pengujian penyimpanan data lokal, manipulasi tugas, render antarmuka, pencarian, dan pemulihan tugas (undo).*
+
+2. **Memeriksa Integritas Kode (Linter & Static Analysis):**
+   ```bash
+   flutter analyze
+   ```
+
+---
+
+## Build untuk Produksi (Android APK)
+
+Untuk membuat file installer `.apk` rilis:
 
 ```bash
 flutter build apk --release
 ```
 
-Hasil build tersedia di `build/app/outputs/flutter-apk/`.
+Hasil file APK akan tersedia di:
+`build/app/outputs/flutter-apk/app-release.apk`
 
-## Struktur proyek
+---
+
+## Struktur Folder Proyek
 
 ```text
 lib/
-├── main.dart
-├── models/       # Model tugas
-├── screens/      # Layar utama, tambah tugas, dan detail
-├── services/     # Penyimpanan lokal dan notifikasi
-└── widgets/      # Komponen antarmuka yang dapat digunakan ulang
-test/             # Pengujian
+├── main.dart                      # Titik awal aplikasi (Entrypoint & Root Widget)
+├── models/
+│   └── task.dart                  # Model data Task & konversi JSON/Map
+├── screens/
+│   ├── home_screen.dart           # Layar utama (daftar tugas, progres, filter & pencarian)
+│   ├── add_task_screen.dart       # Form tambah dan edit tugas
+│   └── detail_task_screen.dart    # Layar rincian detail tugas
+├── services/
+│   ├── notification_service.dart  # Layanan penjadwalan notifikasi & pengingat
+│   └── storage_service.dart       # Layanan penyimpanan lokal (SharedPreferences)
+├── theme/
+│   └── app_theme.dart             # Konfigurasi tema warna asli (Light & Dark Mode)
+└── widgets/
+    ├── empty_task.dart            # Widget tampilan state kosong
+    ├── task_card.dart             # Komponen kartu tugas
+    └── task_tile.dart             # Komponen baris tugas
+test/
+├── storage_service_test.dart      # Unit test layanan penyimpanan data
+└── widget_test.dart               # Widget test antarmuka, form, filter, dan interaksi
 ```
