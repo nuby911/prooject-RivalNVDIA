@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/task.dart';
+
 class TaskDraft {
   const TaskDraft({
     required this.title,
-    required this.description,
-    required this.dueAt,
+    this.description = '',
+    this.dueAt,
   });
 
   final String title;
@@ -13,7 +15,9 @@ class TaskDraft {
 }
 
 class AddTaskScreen extends StatefulWidget {
-  const AddTaskScreen({super.key});
+  const AddTaskScreen({super.key, this.initialTask});
+
+  final Task? initialTask;
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -21,12 +25,25 @@ class AddTaskScreen extends StatefulWidget {
 
 class _AddTaskScreenState extends State<AddTaskScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
   DateTime? _dueAt;
+
+  bool get _isEditMode => widget.initialTask != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.initialTask?.title ?? '');
+    _descriptionController =
+        TextEditingController(text: widget.initialTask?.description ?? '');
+    _dueAt = widget.initialTask?.dueAt;
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -38,7 +55,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       initialDate: initialDate.isBefore(now)
           ? DateTime(now.year, now.month, now.day)
           : initialDate,
-      firstDate: DateTime(now.year, now.month, now.day),
+      firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 5),
     );
     if (date == null || !mounted) return;
@@ -76,13 +93,19 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     });
   }
 
+  void _clearSchedule() {
+    setState(() {
+      _dueAt = null;
+    });
+  }
+
   void _saveTask() {
     if (!_formKey.currentState!.validate()) return;
 
     Navigator.of(context).pop(
       TaskDraft(
         title: _titleController.text.trim(),
-        description: '',
+        description: _descriptionController.text.trim(),
         dueAt: _dueAt,
       ),
     );
@@ -98,40 +121,42 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     final timeLabel = _dueAt == null
         ? 'Pilih waktu'
         : MaterialLocalizations.of(context)
-              .formatTimeOfDay(TimeOfDay.fromDateTime(_dueAt!));
+            .formatTimeOfDay(TimeOfDay.fromDateTime(_dueAt!));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tambah tugas')),
+      appBar: AppBar(
+        title: Text(_isEditMode ? 'Edit tugas' : 'Tambah tugas'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Text(
-              'Rencanakan kegiatanmu',
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+            Text(
+              _isEditMode ? 'Perbarui rencana tugas' : 'Rencanakan kegiatanmu',
+              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
-              'Catat hal yang ingin kamu selesaikan hari ini.',
+              _isEditMode
+                  ? 'Ubah informasi judul, catatan, atau tenggat waktu tugas.'
+                  : 'Catat hal yang ingin kamu selesaikan hari ini.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
             ),
             const SizedBox(height: 8),
             Text(
-              'Jika tenggat diatur, pengingat muncul 10 menit sebelumnya. '
-              'Jika tenggat kurang dari 10 menit lagi, pengingat muncul saat tenggat.',
+              'Jika tenggat diatur, pengingat otomatis dijadwalkan 10 menit sebelumnya.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             TextFormField(
               controller: _titleController,
-              autofocus: true,
+              autofocus: !_isEditMode,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
-                labelText: 'Nama tugas',
+                labelText: 'Nama tugas *',
                 hintText: 'Contoh: Belajar untuk ujian',
                 prefixIcon: Icon(Icons.task_alt_rounded),
-                border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -140,10 +165,38 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 return null;
               },
             ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Catatan / Keterangan (Opsional)',
+                hintText: 'Tambahkan rincian atau keterangan tugas...',
+                prefixIcon: Icon(Icons.notes_rounded),
+                alignLabelWithHint: true,
+              ),
+            ),
             const SizedBox(height: 24),
-            const Text(
-              'Jadwal',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Jadwal Tenggat (Opsional)',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (_dueAt != null)
+                  TextButton.icon(
+                    onPressed: _clearSchedule,
+                    icon: const Icon(Icons.clear_rounded, size: 16),
+                    label: const Text('Hapus jadwal'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red.shade400,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 10),
             Row(
@@ -174,13 +227,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
             SizedBox(
               height: 52,
               child: FilledButton.icon(
                 onPressed: _saveTask,
-                icon: const Icon(Icons.check_rounded),
-                label: const Text('Simpan'),
+                icon: Icon(_isEditMode ? Icons.check_circle_rounded : Icons.check_rounded),
+                label: Text(
+                  _isEditMode ? 'Simpan Perubahan' : 'Simpan Tugas',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
               ),
             ),
           ],
