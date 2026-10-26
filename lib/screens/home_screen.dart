@@ -128,8 +128,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Task> get _filteredTasks {
     var result = _tasks.where((task) {
-      if (_selectedFilter == TaskFilter.pending && task.isCompleted) return false;
-      if (_selectedFilter == TaskFilter.completed && !task.isCompleted) return false;
+      if (_selectedFilter == TaskFilter.pending && task.isCompleted) {
+        return false;
+      }
+      if (_selectedFilter == TaskFilter.completed && !task.isCompleted) {
+        return false;
+      }
 
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
@@ -175,10 +179,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (task.reminderAt != null) {
       try {
-        final notificationsAllowed =
-            await NotificationService.instance.requestPermissions();
-        final exactAlarmsAllowed =
-            await NotificationService.instance.requestExactAlarmPermission();
+        final notificationsAllowed = await NotificationService.instance
+            .requestPermissions();
+        final exactAlarmsAllowed = await NotificationService.instance
+            .requestExactAlarmPermission();
         await NotificationService.instance.scheduleReminder(task);
         if (!mounted) return;
         if (!notificationsAllowed) {
@@ -210,7 +214,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (result.action == DetailActionResult.deleted) {
       await _deleteTask(task, showUndo: true);
-    } else if (result.action == DetailActionResult.updated && result.task != null) {
+    } else if (result.action == DetailActionResult.updated &&
+        result.task != null) {
       final index = _tasks.indexWhere((t) => t.id == task.id);
       if (index != -1) {
         setState(() => _tasks[index] = result.task!);
@@ -286,8 +291,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return 'Kemarin · $timeStr';
     } else {
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-        'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agt',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
       ];
       return '${dateTime.day} ${months[dateTime.month - 1]} · $timeStr';
     }
@@ -295,11 +310,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String get _todayLabel {
     const weekdays = [
-      'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
     ];
     const months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     final now = DateTime.now();
     return '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}';
@@ -328,7 +359,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     _todayLabel.toUpperCase(),
                     style: TextStyle(
-                      color: isDark ? const Color(0xFFA5ADFF) : AppTheme.primaryColor,
+                      color: isDark
+                          ? const Color(0xFFA5ADFF)
+                          : AppTheme.primaryColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.1,
@@ -349,7 +382,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     'Atur kegiatanmu dan nikmati progresnya.',
                     style: TextStyle(
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
                       fontSize: 15,
                     ),
                   ),
@@ -404,7 +439,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: LinearProgressIndicator(
                             value: progress,
                             minHeight: 9,
-                            backgroundColor: Colors.white.withValues(alpha: 0.25),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.25,
+                            ),
                             valueColor: const AlwaysStoppedAnimation<Color>(
                               Colors.white,
                             ),
@@ -458,7 +495,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Search Bar
                   TextField(
                     controller: _searchController,
-                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                    onChanged: (val) =>
+                        setState(() => _searchQuery = val.trim()),
                     decoration: InputDecoration(
                       hintText: 'Cari tugas atau catatan...',
                       prefixIcon: const Icon(Icons.search_rounded),
@@ -471,7 +509,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             )
                           : null,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -491,15 +532,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         FilterChip(
                           label: Text('Belum Selesai ($_pendingCount)'),
                           selected: _selectedFilter == TaskFilter.pending,
-                          onSelected: (_) =>
-                              setState(() => _selectedFilter = TaskFilter.pending),
+                          onSelected: (_) => setState(
+                            () => _selectedFilter = TaskFilter.pending,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         FilterChip(
                           label: Text('Selesai ($_completedCount)'),
                           selected: _selectedFilter == TaskFilter.completed,
-                          onSelected: (_) =>
-                              setState(() => _selectedFilter = TaskFilter.completed),
+                          onSelected: (_) => setState(
+                            () => _selectedFilter = TaskFilter.completed,
+                          ),
                         ),
                       ],
                     ),
@@ -521,7 +564,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         '${filteredTasks.length} tugas',
                         style: TextStyle(
-                          color: isDark ? const Color(0xFFA5ADFF) : AppTheme.primaryColor,
+                          color: isDark
+                              ? const Color(0xFFA5ADFF)
+                              : AppTheme.primaryColor,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -536,14 +581,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       title: _searchQuery.isNotEmpty
                           ? 'Tidak ada hasil pencarian'
                           : (_selectedFilter == TaskFilter.completed
-                              ? 'Belum ada tugas selesai'
-                              : 'Belum ada agenda'),
+                                ? 'Belum ada tugas selesai'
+                                : 'Belum ada agenda'),
                       message: _searchQuery.isNotEmpty
                           ? 'Coba gunakan kata kunci pencarian yang lain.'
                           : (_selectedFilter == TaskFilter.completed
-                              ? 'Selesaikan tugas pertamamu hari ini!'
-                              : 'Yuk, tambahkan tugas barumu!'),
-                      onAddTask: _searchQuery.isEmpty && _selectedFilter != TaskFilter.completed
+                                ? 'Selesaikan tugas pertamamu hari ini!'
+                                : 'Yuk, tambahkan tugas barumu!'),
+                      onAddTask:
+                          _searchQuery.isEmpty &&
+                              _selectedFilter != TaskFilter.completed
                           ? _addTask
                           : null,
                     )
@@ -561,7 +608,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.red.shade400,
                               borderRadius: BorderRadius.circular(18),
                             ),
-                            child: const Icon(Icons.delete_rounded, color: Colors.white),
+                            child: const Icon(
+                              Icons.delete_rounded,
+                              color: Colors.white,
+                            ),
                           ),
                           onDismissed: (_) => _deleteTask(task, showUndo: true),
                           child: Card(
@@ -595,7 +645,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     if (task.description.trim().isNotEmpty)
                                       Padding(
-                                        padding: const EdgeInsets.only(bottom: 4),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4,
+                                        ),
                                         child: Text(
                                           task.description,
                                           maxLines: 1,
@@ -613,7 +665,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                           size: 14,
                                           color: task.isOverdue
                                               ? Colors.red.shade400
-                                              : (isDark ? Colors.grey.shade400 : AppTheme.primaryColor),
+                                              : (isDark
+                                                    ? Colors.grey.shade400
+                                                    : AppTheme.primaryColor),
                                         ),
                                         const SizedBox(width: 5),
                                         Text(
@@ -625,7 +679,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 : FontWeight.normal,
                                             color: task.isOverdue
                                                 ? Colors.red.shade400
-                                                : (isDark ? Colors.grey.shade400 : Colors.grey.shade700),
+                                                : (isDark
+                                                      ? Colors.grey.shade400
+                                                      : Colors.grey.shade700),
                                           ),
                                         ),
                                       ],
@@ -636,9 +692,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () => _openTask(task),
                               trailing: IconButton(
                                 tooltip: 'Hapus ${task.title}',
-                                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 20,
+                                ),
                                 color: Colors.grey.shade500,
-                                onPressed: () => _deleteTask(task, showUndo: true),
+                                onPressed: () =>
+                                    _deleteTask(task, showUndo: true),
                               ),
                             ),
                           ),
@@ -695,7 +755,8 @@ class _SummaryTile extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                      color: Theme.of(context).textTheme.bodySmall?.color
+                          ?.withValues(alpha: 0.7),
                       fontSize: 8,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.2,

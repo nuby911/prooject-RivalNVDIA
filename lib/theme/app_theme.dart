@@ -1,48 +1,5 @@
 import 'package:flutter/material.dart';
 
-<<<<<<< HEAD
-abstract final class AppTheme {
-	static const Color _seedColor = Color(0xFF567A62);
-	static const Color _surfaceColor = Color(0xFFF4F6F3);
-
-	static ThemeData get light {
-		final colorScheme = ColorScheme.fromSeed(
-			seedColor: _seedColor,
-			surface: _surfaceColor,
-		);
-
-		return ThemeData(
-			colorScheme: colorScheme,
-			scaffoldBackgroundColor: _surfaceColor,
-			useMaterial3: true,
-			appBarTheme: const AppBarTheme(
-				backgroundColor: Colors.transparent,
-				surfaceTintColor: Colors.transparent,
-			),
-			cardTheme: CardThemeData(
-				color: colorScheme.surfaceContainerLowest,
-				elevation: 0,
-				shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-			),
-			inputDecorationTheme: InputDecorationTheme(
-				filled: true,
-				fillColor: colorScheme.surfaceContainerLowest,
-				border: OutlineInputBorder(
-					borderRadius: BorderRadius.circular(12),
-					borderSide: BorderSide(color: colorScheme.outlineVariant),
-				),
-				enabledBorder: OutlineInputBorder(
-					borderRadius: BorderRadius.circular(12),
-					borderSide: BorderSide(color: colorScheme.outlineVariant),
-				),
-				focusedBorder: OutlineInputBorder(
-					borderRadius: BorderRadius.circular(12),
-					borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
-				),
-			),
-		);
-	}
-=======
 /// Konfigurasi tema warna asli aplikasi Rencana Harian.
 class AppTheme {
   AppTheme._();
@@ -94,9 +51,7 @@ class AppTheme {
         color: lightSurface,
         elevation: 0.5,
         shadowColor: primaryColor.withValues(alpha: 0.08),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -150,9 +105,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: darkCard,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -177,5 +130,4 @@ class AppTheme {
       ),
     );
   }
->>>>>>> 76fb896d9e8ee4e99b2d6c302ebc9ebf2d3e47a9
 }

@@ -19,8 +19,8 @@ class Task {
     this.reminderAt,
     this.isCompleted = false,
     DateTime? createdAt,
-  })  : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        createdAt = createdAt ?? DateTime.now();
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       createdAt = createdAt ?? DateTime.now();
 
   /// Factory helper untuk membuat Task langsung dari form input
   factory Task.fromDraft({

@@ -16,20 +16,25 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
-  testWidgets('renders HomeScreen and displays title & empty state',
-      (WidgetTester tester) async {
+  testWidgets('renders HomeScreen and displays title & empty state', (
+    WidgetTester tester,
+  ) async {
     setPhoneSize(tester);
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
 
     expect(find.text('Rencana Hari Ini'), findsOneWidget);
-    expect(find.text('Satu langkah kecil,\nlebih dekat ke tujuan.'), findsOneWidget);
+    expect(
+      find.text('Satu langkah kecil,\nlebih dekat ke tujuan.'),
+      findsOneWidget,
+    );
     expect(find.byType(FloatingActionButton), findsOneWidget);
     expect(find.text('Belum ada agenda'), findsOneWidget);
   });
 
-  testWidgets('adds a new task with title and description',
-      (WidgetTester tester) async {
+  testWidgets('adds a new task with title and description', (
+    WidgetTester tester,
+  ) async {
     setPhoneSize(tester);
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
@@ -43,7 +48,10 @@ void main() {
 
     // Enter title & description
     final titleField = find.widgetWithText(TextFormField, 'Nama tugas *');
-    final descField = find.widgetWithText(TextFormField, 'Catatan / Keterangan (Opsional)');
+    final descField = find.widgetWithText(
+      TextFormField,
+      'Catatan / Keterangan (Opsional)',
+    );
 
     await tester.enterText(titleField, 'Belajar Flutter Testing');
     await tester.enterText(descField, 'Mempersiapkan presentasi proyek');
@@ -75,14 +83,20 @@ void main() {
     // Add task 1
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'Nama tugas *'), 'Makan siang');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nama tugas *'),
+      'Makan siang',
+    );
     await tester.tap(find.text('Simpan Tugas'));
     await tester.pumpAndSettle();
 
     // Add task 2
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'Nama tugas *'), 'Belajar matematika');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nama tugas *'),
+      'Belajar matematika',
+    );
     await tester.tap(find.text('Simpan Tugas'));
     await tester.pumpAndSettle();
 
@@ -90,7 +104,10 @@ void main() {
     expect(find.text('Belajar matematika'), findsOneWidget);
 
     // Search 'matematika'
-    final searchField = find.widgetWithText(TextField, 'Cari tugas atau catatan...');
+    final searchField = find.widgetWithText(
+      TextField,
+      'Cari tugas atau catatan...',
+    );
     await tester.enterText(searchField, 'matematika');
     await tester.pumpAndSettle();
 
@@ -98,8 +115,9 @@ void main() {
     expect(find.text('Makan siang'), findsNothing);
   });
 
-  testWidgets('deletes task and restores it with undo button',
-      (WidgetTester tester) async {
+  testWidgets('deletes task and restores it with undo button', (
+    WidgetTester tester,
+  ) async {
     setPhoneSize(tester);
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
@@ -107,7 +125,10 @@ void main() {
     // Add task
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'Nama tugas *'), 'Tugas Hapus');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nama tugas *'),
+      'Tugas Hapus',
+    );
     await tester.tap(find.text('Simpan Tugas'));
     await tester.pumpAndSettle();
 
@@ -132,7 +153,9 @@ void main() {
     expect(find.text('Tugas Hapus'), findsOneWidget);
   });
 
-  testWidgets('opens DetailTaskScreen and edits task', (WidgetTester tester) async {
+  testWidgets('opens DetailTaskScreen and edits task', (
+    WidgetTester tester,
+  ) async {
     setPhoneSize(tester);
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
@@ -140,7 +163,10 @@ void main() {
     // Add task
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'Nama tugas *'), 'Tugas Awal');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nama tugas *'),
+      'Tugas Awal',
+    );
     await tester.tap(find.text('Simpan Tugas'));
     await tester.pumpAndSettle();
 

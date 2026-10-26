@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/task.dart';
 
 class TaskDraft {
-  const TaskDraft({
-    required this.title,
-    this.description = '',
-    this.dueAt,
-  });
+  const TaskDraft({required this.title, this.description = '', this.dueAt});
 
   final String title;
   final String description;
@@ -34,9 +30,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.initialTask?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: widget.initialTask?.description ?? '');
+    _titleController = TextEditingController(
+      text: widget.initialTask?.title ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.initialTask?.description ?? '',
+    );
     _dueAt = widget.initialTask?.dueAt;
   }
 
@@ -121,12 +120,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     final timeLabel = _dueAt == null
         ? 'Pilih waktu'
         : MaterialLocalizations.of(context)
-            .formatTimeOfDay(TimeOfDay.fromDateTime(_dueAt!));
+              .formatTimeOfDay(TimeOfDay.fromDateTime(_dueAt!));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditMode ? 'Edit tugas' : 'Tambah tugas'),
-      ),
+      appBar: AppBar(title: Text(_isEditMode ? 'Edit tugas' : 'Tambah tugas')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -232,10 +229,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               height: 52,
               child: FilledButton.icon(
                 onPressed: _saveTask,
-                icon: Icon(_isEditMode ? Icons.check_circle_rounded : Icons.check_rounded),
+                icon: Icon(
+                  _isEditMode
+                      ? Icons.check_circle_rounded
+                      : Icons.check_rounded,
+                ),
                 label: Text(
                   _isEditMode ? 'Simpan Perubahan' : 'Simpan Tugas',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),

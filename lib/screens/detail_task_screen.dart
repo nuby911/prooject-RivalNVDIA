@@ -6,20 +6,14 @@ import 'add_task_screen.dart';
 enum DetailActionResult { none, updated, deleted }
 
 class DetailResult {
-  const DetailResult({
-    required this.action,
-    this.task,
-  });
+  const DetailResult({required this.action, this.task});
 
   final DetailActionResult action;
   final Task? task;
 }
 
 class DetailTaskScreen extends StatefulWidget {
-  const DetailTaskScreen({
-    super.key,
-    required this.task,
-  });
+  const DetailTaskScreen({super.key, required this.task});
 
   final Task task;
 
@@ -43,7 +37,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         DetailResult(action: DetailActionResult.updated, task: _currentTask),
       );
     } else {
-      Navigator.of(context).pop(const DetailResult(action: DetailActionResult.none));
+      Navigator.of(context)
+          .pop(const DetailResult(action: DetailActionResult.none));
     }
   }
 
@@ -65,9 +60,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       _hasChanges = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tugas berhasil diperbarui')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Tugas berhasil diperbarui')));
   }
 
   Future<void> _confirmDelete() async {
@@ -75,7 +70,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Tugas?'),
-        content: Text('Tugas "${_currentTask.title}" akan dihapus dari daftar rencana.'),
+        content: Text(
+          'Tugas "${_currentTask.title}" akan dihapus dari daftar rencana.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -170,16 +167,17 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     color: isCompleted
                         ? Colors.green.withValues(alpha: 0.12)
                         : (isOverdue
-                            ? Colors.red.withValues(alpha: 0.12)
-                            : const Color(0xFF5B67CA).withValues(alpha: 0.12)),
+                              ? Colors.red.withValues(alpha: 0.12)
+                              : const Color(0xFF5B67CA)
+                                    .withValues(alpha: 0.12)),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Icon(
                     isCompleted
                         ? Icons.task_alt_rounded
                         : (isOverdue
-                            ? Icons.error_outline_rounded
-                            : Icons.event_note_rounded),
+                              ? Icons.error_outline_rounded
+                              : Icons.event_note_rounded),
                     size: 30,
                     color: isCompleted
                         ? Colors.green
@@ -192,7 +190,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     spacing: 8,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: isCompleted
                               ? Colors.green.withValues(alpha: 0.12)
@@ -202,7 +203,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         child: Text(
                           isCompleted ? 'Selesai' : 'Belum selesai',
                           style: TextStyle(
-                            color: isCompleted ? Colors.green.shade800 : Colors.orange.shade900,
+                            color: isCompleted
+                                ? Colors.green.shade800
+                                : Colors.orange.shade900,
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
                           ),
@@ -210,7 +213,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       ),
                       if (isOverdue)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.red.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(30),
@@ -260,14 +266,19 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               child: FilledButton.icon(
                 onPressed: _toggleCompleted,
                 style: FilledButton.styleFrom(
-                  backgroundColor: isCompleted ? Colors.blueGrey.shade700 : const Color(0xFF5B67CA),
+                  backgroundColor: isCompleted
+                      ? Colors.blueGrey.shade700
+                      : const Color(0xFF5B67CA),
                 ),
                 icon: Icon(
                   isCompleted ? Icons.undo_rounded : Icons.check_circle_rounded,
                 ),
                 label: Text(
                   isCompleted ? 'Tandai Belum Selesai' : 'Tandai Selesai',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
@@ -315,13 +326,17 @@ class _DetailSection extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     value,
                     style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
+                      color: Theme.of(context).textTheme.bodyMedium?.color
+                          ?.withValues(alpha: 0.8),
                       fontSize: 14,
                       height: 1.4,
                     ),
